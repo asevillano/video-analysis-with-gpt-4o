@@ -1,0 +1,11 @@
+streamlit
+cv2
+import json
+dotenv import load_dotenv
+moviepy.video.io.ffmpeg_tools
+moviepy.editor
+openai
+base64
+mimetypes
+yt_dlp
+yt_dlp.utils
