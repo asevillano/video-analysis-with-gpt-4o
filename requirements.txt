@@ -1,11 +1,6 @@
-streamlit
-cv2
-json
-dotenv
-moviepy.video.io.ffmpeg_tools
-moviepy.editor
-openai
-base64
-mimetypes
-yt_dlp
-yt_dlp.utils
+opencv-python==4.10.0.84
+dotenv==0.0.5
+moviepy==1.0.3
+openai==1.30.5
+streamlit==1.38.0
+yt_dlp==2024.8.6

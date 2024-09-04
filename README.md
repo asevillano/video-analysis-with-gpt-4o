@@ -14,7 +14,7 @@ The steps to process a video are the following:
 + A deployment of GPT-4o model on the Azure OpenAI Service.
 + A deployment of whisper model on the Azure OpenAI Service.
 
-I used Python 3.12.3, [Visual Studio Code with the Python extension](https://code.visualstudio.com/docs/python/python-tutorial), and the [Jupyter extension](https://marketplace.visualstudio.com/items?itemName=ms-toolsai.jupyter) to test this example.
+I used Python 3.12.5, [Visual Studio Code with the Python extension](https://code.visualstudio.com/docs/python/python-tutorial), and the [Jupyter extension](https://marketplace.visualstudio.com/items?itemName=ms-toolsai.jupyter) to test this example.
 
 ### Set up a Python virtual environment in Visual Studio Code
 
