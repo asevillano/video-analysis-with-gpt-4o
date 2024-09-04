@@ -1,7 +1,7 @@
 streamlit
 cv2
-import json
-dotenv import load_dotenv
+json
+dotenv
 moviepy.video.io.ffmpeg_tools
 moviepy.editor
 openai

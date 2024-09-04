@@ -14,7 +14,7 @@ import yt_dlp
 from yt_dlp.utils import download_range_func
 
 # Default configuration
-SEGMENT_DURATION = 30 # In seconds, Set to 0 to not split the video
+SEGMENT_DURATION = 0 # In seconds, Set to 0 to not split the video
 SYSTEM_PROMPT = "You are a helpful assistant that describes in detail a video. Response in the same language than the transcription."
 USER_PROMPT = "These are the frames from the video."
 
@@ -25,6 +25,7 @@ load_dotenv(override=True)
 aoai_endpoint = os.environ["AZURE_OPENAI_ENDPOINT"]
 aoai_apikey = os.environ["AZURE_OPENAI_API_KEY"]
 aoai_model_name = os.environ["AZURE_OPENAI_DEPLOYMENT_NAME"]
+print(f'aoai_endpoint: {aoai_endpoint}, aoai_model_name: {aoai_model_name}')
 # Create AOAI client for answer generation
 aoai_client = AzureOpenAI(
     azure_deployment=aoai_model_name,
@@ -127,7 +128,7 @@ def analyze_video(base64frames, system_prompt, user_prompt, transcription):
             )
 
         json_response = json.loads(response.model_dump_json())
-        print(f'RESPONSE: [{response.model_dump_json(indent=2)}]')
+        #print(f'RESPONSE: [{response.model_dump_json(indent=2)}]')
         response = json_response['choices'][0]['message']['content']
 
     except Exception as ex:
@@ -158,7 +159,7 @@ def execute_video_processing(st, segment_path, system_prompt, user_prompt):
     st.write(f"Video: {segment_path}:")
     st.video(segment_path)
 
-    with st.spinner(f"Analizando segmento: {segment_path}"):
+    with st.spinner(f"Analyzing segment: {segment_path}"):
         # Extract 1 frame per second. Adjust the `seconds_per_frame` parameter to change the sampling rate
         with st.spinner(f"Extracting frames..."):
             inicio = time.time()
@@ -187,18 +188,18 @@ def execute_video_processing(st, segment_path, system_prompt, user_prompt):
     st.write(f"**Analysis of segment {segment_path}** ({(fin - inicio):.3f} seconds)")
     fin = time.time()
     print(f'\t>>>> {(fin - inicio):.6f} segundos <<<<')
-    st.success("Análisis completo.")
+    st.success("Analysis completed.")
 
     return analysis
 
 # Streamlit User Interface
 st.set_page_config(
-    page_title="Análisis de Video con GPT-4o",
+    page_title="Video Analysis with GPT-4o",
     layout="centered",
     initial_sidebar_state="auto",
 )
 st.image("microsoft.png", width=100)
-st.title('Análisis de Video con GPT-4o')
+st.title('Video Analysis with GPT-4o')
 
 with st.sidebar:
     file_or_url = st.selectbox("Video source:", ["File", "URL"], index=0, help="Select the source, file or url")
@@ -254,7 +255,7 @@ if st.button("Analize video", use_container_width=True, type='primary'):
                     break
 
             segment_path = filename
-            print(f"Segmento descargado: {segment_path}")
+            print(f"Segment downloaded: {segment_path}")
 
             # Process the video segment
             analysis = execute_video_processing(st, segment_path, system_prompt, user_prompt)
