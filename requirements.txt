@@ -1,5 +1,5 @@
 opencv-python==4.10.0.84
-dotenv==0.0.5
+python-dotenv==1.0.0
 moviepy==1.0.3
 openai==1.30.5
 streamlit==1.38.0

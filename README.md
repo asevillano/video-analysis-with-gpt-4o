@@ -31,3 +31,5 @@ The needed libraries are specified in [requirement.txt](requirements.txt).
 Here is the code of this demo: [video-analysis-with-gpt-4o.py](video-analysis-with-gpt-4o.py)
 
 To run the application execute this command: streamlit run video-analysis-with-gpt-4o.py
+
+To deploy the application in an Azure Container Registry (Docker), create the service and execute the following command inside the application folder: az acr build --registry <nameofyourcontainer> --image webimage .
