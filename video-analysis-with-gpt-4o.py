@@ -46,7 +46,7 @@ whisper_client = AzureOpenAI(
 )
 
 # Function to encode a local video into frames
-def process_video(video_path, seconds_per_frame=2):
+def process_video(video_path, seconds_per_frame=2, resize=2, output_dir=''):
     base64Frames = []
 
     # Prepare the video analysis
@@ -56,6 +56,12 @@ def process_video(video_path, seconds_per_frame=2):
     frames_to_skip = int(fps * seconds_per_frame)
     curr_frame=0
 
+    # Prepare to write the frames to disk
+    if output_dir != '': # if we want to write the frame to disk
+        output_dir = 'frames'
+        os.makedirs(output_dir, exist_ok=True)
+        frame_count = 1
+
     # Loop through the video and extract frames at specified sampling rate
     while curr_frame < total_frames - 1:
         video.set(cv2.CAP_PROP_POS_FRAMES, curr_frame)
@@ -63,10 +69,20 @@ def process_video(video_path, seconds_per_frame=2):
         if not success:
             break
 
+        # Resize the frame to save tokens and get faster answer from the model. If resize==0 don't resize
         height, width, _ = frame.shape
-        frame = cv2.resize(frame, (width // 2, height // 2))
+        if resize != 0:
+            frame = cv2.resize(frame, (width // 2, height // 2))
 
         _, buffer = cv2.imencode(".jpg", frame)
+
+        # Save frame as JPG file
+        if output_dir != '': # if we want to write the frame to disk
+            frame_filename = os.path.join(output_dir, f"{os.path.splitext(os.path.basename(video_path))[0]}_frame_{frame_count}.jpg")
+            print(f'Saving frame {frame_filename}')
+            with open(frame_filename, "wb") as f:
+                f.write(buffer)            
+            frame_count += 1
 
         base64Frames.append(base64.b64encode(buffer).decode("utf-8"))
         curr_frame += frames_to_skip
@@ -149,7 +165,7 @@ def split_video(video_path, output_dir, segment_length=180):
 
     for start_time in range(0, int(duration), segment_length):
         end_time = min(start_time + segment_length, duration)
-        output_file = os.path.join(output_dir, f'segment_{start_time}-{end_time}_secs.mp4')
+        output_file = os.path.join(output_dir, f'{os.path.splitext(os.path.basename(video_path))[0]}_segment_{start_time}-{end_time}_secs.mp4')
         ffmpeg_extract_subclip(video_path, start_time, end_time, targetname=output_file)
         yield output_file
 
@@ -163,7 +179,7 @@ def execute_video_processing(st, segment_path, system_prompt, user_prompt):
         # Extract 1 frame per second. Adjust the `seconds_per_frame` parameter to change the sampling rate
         with st.spinner(f"Extracting frames..."):
             inicio = time.time()
-            base64frames = process_video(segment_path, seconds_per_frame=1)
+            base64frames = process_video(segment_path, seconds_per_frame=1, resize=0, output_dir='frames')
             fin = time.time()
             print(f'\\t>>>> Frames extraction took {(fin - inicio):.3f} seconds <<<<')
             st.write(f'Extracted {len(base64frames)} frames in {(fin - inicio):.3f} seconds')
@@ -216,7 +232,7 @@ os.makedirs(output_dir, exist_ok=True)
 if file_or_url == 'File':
     video_file = st.file_uploader("Upload a video file", type=["mp4", "avi", "mov"])
 else:
-    url = st.text_area("Enter de url:", value='https://www.youtube.com/watch?v=CI9djzS3Ld0', height=10)
+    url = st.text_area("Enter de url:", value='https://www.youtube.com/watch?v=Y6kHpAeIr4c', height=10)
     continuous_transmision = st.checkbox('Continuous transmision', False, help="Video of a continuous transmision")
 
 # Analyze the video when the button is pressed
