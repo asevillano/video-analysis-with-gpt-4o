@@ -32,4 +32,4 @@ Here is the code of this demo: [video-analysis-with-gpt-4o.py](video-analysis-wi
 
 To run the application execute this command: streamlit run video-analysis-with-gpt-4o.py
 
-To deploy the application in an Azure Container Registry (Docker), create the service and execute the following command inside the application folder: az acr build --registry <nameofyourcontainer> --image webimage .
+To deploy the application on your Azure tenant in an Azure Container Registry (Docker), create the service and execute the following command inside the application folder: az acr build --registry NAMEOFYOURCONTAINER --image webimage following this [guide: Build and store an image by using Azure Container Registry](https://learn.microsoft.com/en-us/training/modules/deploy-run-container-app-service/3-exercise-build-images) and then create and deploy the web app following this [guide: Create and deploy a web app from a Docker image](https://learn.microsoft.com/en-us/training/modules/deploy-run-container-app-service/5-exercise-deploy-web-app).
