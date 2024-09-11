@@ -17,6 +17,7 @@ from yt_dlp.utils import download_range_func
 SEGMENT_DURATION = 0 # In seconds, Set to 0 to not split the video
 SYSTEM_PROMPT = "You are a helpful assistant that describes in detail a video. Response in the same language than the transcription."
 USER_PROMPT = "These are the frames from the video."
+DEFAULT_TEMPERATURE = 0.5
 
 # Load configuration
 load_dotenv(override=True)
@@ -46,7 +47,7 @@ whisper_client = AzureOpenAI(
 )
 
 # Function to encode a local video into frames
-def process_video(video_path, seconds_per_frame=2, resize=2, output_dir=''):
+def process_video(video_path, seconds_per_frame=2, resize=2, output_dir='', temperature = DEFAULT_TEMPERATURE):
     base64Frames = []
 
     # Prepare the video analysis
@@ -70,8 +71,8 @@ def process_video(video_path, seconds_per_frame=2, resize=2, output_dir=''):
             break
 
         # Resize the frame to save tokens and get faster answer from the model. If resize==0 don't resize
-        height, width, _ = frame.shape
         if resize != 0:
+            height, width, _ = frame.shape
             frame = cv2.resize(frame, (width // 2, height // 2))
 
         _, buffer = cv2.imencode(".jpg", frame)
@@ -111,7 +112,7 @@ def process_audio(video_path):
     return transcription
 
 # Function to analyze the video with GPT-4o
-def analyze_video(base64frames, system_prompt, user_prompt, transcription):
+def analyze_video(base64frames, system_prompt, user_prompt, transcription, temperature):
 
     try:
         if transcription != '': # Include the audio transcription
@@ -126,7 +127,7 @@ def analyze_video(base64frames, system_prompt, user_prompt, transcription):
                         # *question_messages
                     ]}
                 ],
-                temperature=0.5,
+                temperature=temperature, #0.5,
                 max_tokens=4096
             )
         else: # Without the audio transcription
@@ -170,7 +171,7 @@ def split_video(video_path, output_dir, segment_length=180):
         yield output_file
 
 # Process the video
-def execute_video_processing(st, segment_path, system_prompt, user_prompt):
+def execute_video_processing(st, segment_path, system_prompt, user_prompt, temperature):
     # Show the video on the screen
     st.write(f"Video: {segment_path}:")
     st.video(segment_path)
@@ -179,13 +180,18 @@ def execute_video_processing(st, segment_path, system_prompt, user_prompt):
         # Extract 1 frame per second. Adjust the `seconds_per_frame` parameter to change the sampling rate
         with st.spinner(f"Extracting frames..."):
             inicio = time.time()
-            base64frames = process_video(segment_path, seconds_per_frame=1, resize=0, output_dir='frames')
+            if save_frames:
+                output_dir = 'frames'
+            else:
+                output_dir = ''
+            base64frames = process_video(segment_path, seconds_per_frame=1, resize=resize, output_dir=output_dir, temperature=temperature)
             fin = time.time()
             print(f'\\t>>>> Frames extraction took {(fin - inicio):.3f} seconds <<<<')
             st.write(f'Extracted {len(base64frames)} frames in {(fin - inicio):.3f} seconds')
 
         # Extract the transcription of the audio
         if audio_transcription:
+            msg = f'Analyzing frames and audio with {aoai_model_name}...'
             with st.spinner(f"Transcribing audio from video file..."):
                 inicio = time.time()
                 transcription = process_audio(segment_path)
@@ -193,11 +199,12 @@ def execute_video_processing(st, segment_path, system_prompt, user_prompt):
                 st.write(f'Transcription finished in {(fin - inicio):.3f} seconds')
                 print(f'\t>>>> Audio transcription took {(fin - inicio):.3f} seconds <<<<')
         else:
+            msg = f'Analyzing frames with {aoai_model_name}...'
             transcription = ''
         # Analyze the video frames and the audio transcription with GPT-4o
-        with st.spinner(f"Analyzing frames and audio with GPT-4o..."):
+        with st.spinner(msg):
             inicio = time.time()
-            analysis = analyze_video(base64frames, system_prompt, user_prompt, transcription)
+            analysis = analyze_video(base64frames, system_prompt, user_prompt, transcription, temperature)
             fin = time.time()
             print(f'\t>>>> Analysys with GPT-4o took {(fin - inicio):.3f} seconds <<<<')
 
@@ -220,9 +227,12 @@ st.title('Video Analysis with GPT-4o')
 with st.sidebar:
     file_or_url = st.selectbox("Video source:", ["File", "URL"], index=0, help="Select the source, file or url")
     audio_transcription = st.checkbox('Transcript audio', True, help="Extract the audio transcription and use in the analysis or not")
-    seconds = int(st.text_input('Number of seconds to split the video (0 to not split)', str(SEGMENT_DURATION)))
-    system_prompt = st.text_area('System Prompt to analyze the video', SYSTEM_PROMPT)
-    user_prompt = st.text_area('User Prompt to analyze the video', USER_PROMPT)
+    seconds = int(st.text_input('Number of seconds to split the video', str(SEGMENT_DURATION), help="The video will be processed in smaller segments based on the number of seconds specified in this field. (0 to not split)"))
+    resize = int(st.text_input("Frames resizing ratio", str(SEGMENT_DURATION), help="The size of the images will be reduced in proportion to this number while maintaining the height/width ratio. This reduction is useful for improving latency and reducing token consumption (0 to not resize)"))
+    save_frames = st.checkbox('Save the frames to the folder "frames"', False)
+    temperature = float(st.text_input('Temperature for the model', str(DEFAULT_TEMPERATURE)))
+    system_prompt = st.text_area('System Prompt', SYSTEM_PROMPT)
+    user_prompt = st.text_area('User Prompt', USER_PROMPT)
 
 # Prepare the segment directory
 output_dir = "segments"
@@ -274,7 +284,7 @@ if st.button("Analize video", use_container_width=True, type='primary'):
             print(f"Segment downloaded: {segment_path}")
 
             # Process the video segment
-            analysis = execute_video_processing(st, segment_path, system_prompt, user_prompt)
+            analysis = execute_video_processing(st, segment_path, system_prompt, user_prompt, temperature)
             st.write(f"{analysis}")
 
             event="guitarra eléctrica"
@@ -297,7 +307,7 @@ if st.button("Analize video", use_container_width=True, type='primary'):
         # Splitting video in segment of N seconds
         for segment_path in split_video(video_path, output_dir, seconds):
             # Process the video segment
-            analysis = execute_video_processing(st, segment_path, system_prompt, user_prompt)
+            analysis = execute_video_processing(st, segment_path, system_prompt, user_prompt, temperature)
             st.write(f"{analysis}")
 
             # Delete the video segment
