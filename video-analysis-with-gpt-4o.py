@@ -94,21 +94,26 @@ def process_video(video_path, seconds_per_frame=2, resize=2, output_dir='', temp
 
 # Function to transcript the audio from the local video with Whisper
 def process_audio(video_path):
-    base_video_path, _ = os.path.splitext(video_path)
-    audio_path = f"{base_video_path}.mp3"
-    clip = VideoFileClip(video_path)
-    clip.audio.write_audiofile(audio_path, bitrate="32k")
-    clip.audio.close()
-    clip.close()
-    print(f"Extracted audio to {audio_path}")
 
-    # Transcribe the audio
-    transcription = whisper_client.audio.transcriptions.create(
-        model=whisper_model_name,
-        file=open(audio_path, "rb"),
-    )
-    print("Transcript: ", transcription.text + "\n\n")
-        
+    try:
+        base_video_path, _ = os.path.splitext(video_path)
+        audio_path = f"{base_video_path}.mp3"
+        clip = VideoFileClip(video_path)
+        clip.audio.write_audiofile(audio_path, bitrate="32k")
+        clip.audio.close()
+        clip.close()
+        print(f"Extracted audio to {audio_path}")
+
+        # Transcribe the audio
+        transcription = whisper_client.audio.transcriptions.create(
+            model=whisper_model_name,
+            file=open(audio_path, "rb"),
+        )
+        print("Transcript: ", transcription.text + "\n\n")
+    except Exception as ex:
+        print(f'ERROR: {ex}')
+        transcription = ''
+
     return transcription
 
 # Function to analyze the video with GPT-4o
