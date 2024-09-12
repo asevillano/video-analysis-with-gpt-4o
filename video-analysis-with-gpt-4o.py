@@ -18,6 +18,8 @@ SEGMENT_DURATION = 0 # In seconds, Set to 0 to not split the video
 SYSTEM_PROMPT = "You are a helpful assistant that describes in detail a video. Response in the same language than the transcription."
 USER_PROMPT = "These are the frames from the video."
 DEFAULT_TEMPERATURE = 0.5
+RESIZE_OF_FRAMES = 2
+SECONDS_PER_FRAME = 1
 
 # Load configuration
 load_dotenv(override=True)
@@ -47,7 +49,7 @@ whisper_client = AzureOpenAI(
 )
 
 # Function to encode a local video into frames
-def process_video(video_path, seconds_per_frame=2, resize=2, output_dir='', temperature = DEFAULT_TEMPERATURE):
+def process_video(video_path, seconds_per_frame=SECONDS_PER_FRAME, resize=RESIZE_OF_FRAMES, output_dir='', temperature = DEFAULT_TEMPERATURE):
     base64Frames = []
 
     # Prepare the video analysis
@@ -189,7 +191,7 @@ def execute_video_processing(st, segment_path, system_prompt, user_prompt, tempe
                 output_dir = 'frames'
             else:
                 output_dir = ''
-            base64frames = process_video(segment_path, seconds_per_frame=1, resize=resize, output_dir=output_dir, temperature=temperature)
+            base64frames = process_video(segment_path, seconds_per_frame=seconds_per_frame, resize=resize, output_dir=output_dir, temperature=temperature)
             fin = time.time()
             print(f'\\t>>>> Frames extraction took {(fin - inicio):.3f} seconds <<<<')
             st.write(f'Extracted {len(base64frames)} frames in {(fin - inicio):.3f} seconds')
@@ -233,6 +235,7 @@ with st.sidebar:
     file_or_url = st.selectbox("Video source:", ["File", "URL"], index=0, help="Select the source, file or url")
     audio_transcription = st.checkbox('Transcript audio', True, help="Extract the audio transcription and use in the analysis or not")
     seconds = int(st.text_input('Number of seconds to split the video', str(SEGMENT_DURATION), help="The video will be processed in smaller segments based on the number of seconds specified in this field. (0 to not split)"))
+    seconds_per_frame = float(st.text_input('Number of seconds per frame', str(SECONDS_PER_FRAME), help="The frames will be extracted every number of seconds specified in the field. It can be a decimal number, like 0.5, to extract a frame every half of second."))
     resize = int(st.text_input("Frames resizing ratio", str(SEGMENT_DURATION), help="The size of the images will be reduced in proportion to this number while maintaining the height/width ratio. This reduction is useful for improving latency and reducing token consumption (0 to not resize)"))
     save_frames = st.checkbox('Save the frames to the folder "frames"', False)
     temperature = float(st.text_input('Temperature for the model', str(DEFAULT_TEMPERATURE)))
@@ -252,6 +255,12 @@ else:
 
 # Analyze the video when the button is pressed
 if st.button("Analize video", use_container_width=True, type='primary'):
+
+    # Show parameters:
+    print(f"PARAMETERS:")
+    print(f"file_or_url: {file_or_url}, audio_transcription: {audio_transcription}, seconds to split: {seconds}")
+    print(f"seconds_per_frame: {seconds_per_frame}, resize ratio: {resize}, save_frames: {save_frames}, temperature: {temperature}")
+
     if file_or_url == 'URL': # Process Youtube video
         st.write(f'Analyzing video from url {url}...')
         
@@ -292,6 +301,7 @@ if st.button("Analize video", use_container_width=True, type='primary'):
             analysis = execute_video_processing(st, segment_path, system_prompt, user_prompt, temperature)
             st.write(f"{analysis}")
 
+            # Example detecting an event
             event="guitarra eléctrica"
             if event in analysis:
                 st.write(f'**Detected event "{event}" in segment {segment_path}**')
@@ -302,19 +312,19 @@ if st.button("Analize video", use_container_width=True, type='primary'):
     else: # Process the fideo file
         if video_file is not None:
             video_path = os.path.join("temp", video_file.name)
-        with open(video_path, "wb") as f:
-            f.write(video_file.getbuffer())
+        try:
+            with open(video_path, "wb") as f:
+                f.write(video_file.getbuffer())
 
-        # Show the video on the screen
-        #st.write("The full video:")
-        #st.video(video_path)
+            # Splitting video in segment of N seconds (if seconds is 0 t will not split the video)
+            for segment_path in split_video(video_path, output_dir, seconds):
+                # Process the video segment
+                analysis = execute_video_processing(st, segment_path, system_prompt, user_prompt, temperature)
+                st.write(f"{analysis}")
 
-        # Splitting video in segment of N seconds
-        for segment_path in split_video(video_path, output_dir, seconds):
-            # Process the video segment
-            analysis = execute_video_processing(st, segment_path, system_prompt, user_prompt, temperature)
-            st.write(f"{analysis}")
+                # Delete the video segment
+                os.remove(segment_path)
 
-            # Delete the video segment
-            os.remove(segment_path)
-
+        except Exception as ex:
+            print(f'ERROR: {ex}')
+            st.write(f'ERROR: {ex}')
