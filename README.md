@@ -30,7 +30,7 @@ The needed libraries are specified in [requirement.txt](requirements.txt).
 
 Here is the code of this demo: [video-analysis-with-gpt-4o.py](video-analysis-with-gpt-4o.py)
 
-A screenshot fo the app:
+A screenshot:
 <img src="./Screenshot.png" alt="Sample Screenshot"/>
 
 To run the application execute this command: streamlit run video-analysis-with-gpt-4o.py
