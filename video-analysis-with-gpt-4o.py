@@ -75,7 +75,7 @@ def process_video(video_path, seconds_per_frame=SECONDS_PER_FRAME, resize=RESIZE
         # Resize the frame to save tokens and get faster answer from the model. If resize==0 don't resize
         if resize != 0:
             height, width, _ = frame.shape
-            frame = cv2.resize(frame, (width // 2, height // 2))
+            frame = cv2.resize(frame, (width // resize, height // resize))
 
         _, buffer = cv2.imencode(".jpg", frame)
 
@@ -121,17 +121,19 @@ def process_audio(video_path):
 # Function to analyze the video with GPT-4o
 def analyze_video(base64frames, system_prompt, user_prompt, transcription, temperature):
 
+    print(f'SYSTEM PROMPT: [{system_prompt}]')
+    print(f'USER PROMPT:   [{user_prompt}]')
+
     try:
         if transcription != '': # Include the audio transcription
             response = aoai_client.chat.completions.create(
                 model=aoai_model_name,
                 messages=[
                     {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": "These are the frames from the video.",},
+                    {"role": "user", "content": user_prompt}, #"These are the frames from the video.",},
                     {"role": "user", "content": [
                         *map(lambda x: {"type": "image_url", "image_url": {"url": f'data:image/jpg;base64,{x}', "detail": "auto"}}, base64frames),
-                        {"type": "text", "text": f"The audio transcription is: {transcription.text}"},
-                        # *question_messages
+                        {"type": "text", "text": f"The audio transcription is: {transcription.text}"}
                     ]}
                 ],
                 temperature=temperature, #0.5,
@@ -142,7 +144,7 @@ def analyze_video(base64frames, system_prompt, user_prompt, transcription, tempe
                 model=aoai_model_name,
                 messages=[
                     {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": "These are the frames from the video.",},
+                    {"role": "user", "content": user_prompt}, #"These are the frames from the video.",},
                     {"role": "user", "content": [
                         *map(lambda x: {"type": "image_url", "image_url": {"url": f'data:image/jpg;base64,{x}', "detail": "auto"}}, base64frames),
                     ]}
@@ -183,7 +185,7 @@ def execute_video_processing(st, segment_path, system_prompt, user_prompt, tempe
     st.write(f"Video: {segment_path}:")
     st.video(segment_path)
 
-    with st.spinner(f"Analyzing segment: {segment_path}"):
+    with st.spinner(f"Analyzing video segment: {segment_path}"):
         # Extract 1 frame per second. Adjust the `seconds_per_frame` parameter to change the sampling rate
         with st.spinner(f"Extracting frames..."):
             inicio = time.time()
@@ -194,7 +196,7 @@ def execute_video_processing(st, segment_path, system_prompt, user_prompt, tempe
             base64frames = process_video(segment_path, seconds_per_frame=seconds_per_frame, resize=resize, output_dir=output_dir, temperature=temperature)
             fin = time.time()
             print(f'\\t>>>> Frames extraction took {(fin - inicio):.3f} seconds <<<<')
-            st.write(f'Extracted {len(base64frames)} frames in {(fin - inicio):.3f} seconds')
+            ### st.write(f'Extracted {len(base64frames)} frames in {(fin - inicio):.3f} seconds')
 
         # Extract the transcription of the audio
         if audio_transcription:
@@ -203,8 +205,11 @@ def execute_video_processing(st, segment_path, system_prompt, user_prompt, tempe
                 inicio = time.time()
                 transcription = process_audio(segment_path)
                 fin = time.time()
-                st.write(f'Transcription finished in {(fin - inicio):.3f} seconds')
-                print(f'\t>>>> Audio transcription took {(fin - inicio):.3f} seconds <<<<')
+            ### st.write(f'Transcription finished in {(fin - inicio):.3f} seconds')
+            print(f'Transcription: {transcription.text}')
+            if show_transcription:
+                st.markdown(f"**Transcription**: {transcription.text}", unsafe_allow_html=True)
+            print(f'\t>>>> Audio transcription took {(fin - inicio):.3f} seconds <<<<')
         else:
             msg = f'Analyzing frames with {aoai_model_name}...'
             transcription = ''
@@ -213,9 +218,9 @@ def execute_video_processing(st, segment_path, system_prompt, user_prompt, tempe
             inicio = time.time()
             analysis = analyze_video(base64frames, system_prompt, user_prompt, transcription, temperature)
             fin = time.time()
-            print(f'\t>>>> Analysys with GPT-4o took {(fin - inicio):.3f} seconds <<<<')
+        print(f'\t>>>> Analysys with {aoai_model_name} took {(fin - inicio):.3f} seconds <<<<')
 
-    st.write(f"**Analysis of segment {segment_path}** ({(fin - inicio):.3f} seconds)")
+    ### st.write(f"**Analysis of segment {segment_path}** ({(fin - inicio):.3f} seconds)")
     fin = time.time()
     print(f'\t>>>> {(fin - inicio):.6f} segundos <<<<')
     st.success("Analysis completed.")
@@ -233,7 +238,11 @@ st.title('Video Analysis with GPT-4o')
 
 with st.sidebar:
     file_or_url = st.selectbox("Video source:", ["File", "URL"], index=0, help="Select the source, file or url")
+    # file_or_url = "File"
+    
     audio_transcription = st.checkbox('Transcript audio', True, help="Extract the audio transcription and use in the analysis or not")
+    if audio_transcription:
+        show_transcription = st.checkbox('Show audio transcription', True, help="Present the audio transcription or not")
     seconds = int(st.text_input('Number of seconds to split the video', str(SEGMENT_DURATION), help="The video will be processed in smaller segments based on the number of seconds specified in this field. (0 to not split)"))
     seconds_per_frame = float(st.text_input('Number of seconds per frame', str(SECONDS_PER_FRAME), help="The frames will be extracted every number of seconds specified in the field. It can be a decimal number, like 0.5, to extract a frame every half of second."))
     resize = int(st.text_input("Frames resizing ratio", str(SEGMENT_DURATION), help="The size of the images will be reduced in proportion to this number while maintaining the height/width ratio. This reduction is useful for improving latency and reducing token consumption (0 to not resize)"))
@@ -265,7 +274,8 @@ if st.button("Analize video", use_container_width=True, type='primary'):
         st.write(f'Analyzing video from url {url}...')
         
         ydl_opts = {
-                'format': 'best',
+                #'format': 'best',
+                'format': '(bestvideo[vcodec^=av01]/bestvideo[vcodec^=vp9]/bestvideo)+bestaudio/best',
                 'outtmpl': 'segment_%(start)s.mp4',
                 'force_keyframes_at_cuts': True,
         }
@@ -273,17 +283,22 @@ if st.button("Analize video", use_container_width=True, type='primary'):
         if continuous_transmision == False:
             info_dict = ydl.extract_info(url, download=False)
             video_duration = info_dict.get('duration', 0)
+
+            if seconds == 0:
+                duracion_segmento=video_duration
+            else:
+                duracion_segmento=seconds #SEGMENT_DURATION
         else:
             video_duration = 48*60*60
         
-        if seconds == 0:
-            duracion_segmento=video_duration
-        else:
-            duracion_segmento=seconds #SEGMENT_DURATION
+            if seconds == 0:
+                duracion_segmento=180 # 3 minutes
+            else:
+                duracion_segmento=seconds #SEGMENT_DURATION
         
         for start in range(0, video_duration, duracion_segmento):
             end = start + duracion_segmento
-            filename = f'segments/segment_{start}.mp4'
+            filename = f'segments/segment_{start}-{end}.mp4'
             with st.spinner(f"Downloading video from second {start} to {end}..."):
                 ydl_opts['outtmpl']['default'] = filename
                 ydl_opts['download_ranges'] = download_range_func(None, [(start, end)])
@@ -294,12 +309,16 @@ if st.button("Analize video", use_container_width=True, type='primary'):
                 except:
                     break
 
-            segment_path = filename
+            if os.path.exists(filename):
+                segment_path = filename
+            else:
+                segment_path = filename + '.mkv'
             print(f"Segment downloaded: {segment_path}")
 
             # Process the video segment
             analysis = execute_video_processing(st, segment_path, system_prompt, user_prompt, temperature)
-            st.write(f"{analysis}")
+            st.markdown(f"**Description**: {analysis}", unsafe_allow_html=True)
+            #st.write(f"{analysis}")
 
             # Example detecting an event
             event="guitarra eléctrica"
