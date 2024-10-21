@@ -311,10 +311,13 @@ if st.button("Analize video", use_container_width=True, type='primary'):
                 except:
                     break
 
-            if os.path.exists(filename):
+            if os.path.exists(filename): # ext .mp4
                 segment_path = filename
             else:
                 segment_path = filename + '.mkv'
+                if not os.path.exists(segment_path):
+                    segment_path = filename + '.webm'
+
             print(f"Segment downloaded: {segment_path}")
 
             # Process the video segment
