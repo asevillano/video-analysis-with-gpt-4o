@@ -14,7 +14,7 @@ import yt_dlp
 from yt_dlp.utils import download_range_func
 
 # Default configuration
-SEGMENT_DURATION = 0 # In seconds, Set to 0 to not split the video
+SEGMENT_DURATION = 20 # In seconds, Set to 0 to not split the video
 SYSTEM_PROMPT = "You are a helpful assistant that describes in detail a video. Response in the same language than the transcription."
 USER_PROMPT = "These are the frames from the video."
 DEFAULT_TEMPERATURE = 0.5
@@ -239,15 +239,20 @@ st.title('Video Analysis with GPT-4o')
 with st.sidebar:
     file_or_url = st.selectbox("Video source:", ["File", "URL"], index=0, help="Select the source, file or url")
     # file_or_url = "File"
-    
+    initial_split = 0
+    if file_or_url == "URL":
+        continuous_transmision = st.checkbox('Continuous transmision', False, help="Video of a continuous transmision")
+        if continuous_transmision:
+            initial_split = SEGMENT_DURATION
+        
     audio_transcription = st.checkbox('Transcript audio', True, help="Extract the audio transcription and use in the analysis or not")
     if audio_transcription:
         show_transcription = st.checkbox('Show audio transcription', True, help="Present the audio transcription or not")
-    seconds = int(st.text_input('Number of seconds to split the video', str(SEGMENT_DURATION), help="The video will be processed in smaller segments based on the number of seconds specified in this field. (0 to not split)"))
-    seconds_per_frame = float(st.text_input('Number of seconds per frame', str(SECONDS_PER_FRAME), help="The frames will be extracted every number of seconds specified in the field. It can be a decimal number, like 0.5, to extract a frame every half of second."))
-    resize = int(st.text_input("Frames resizing ratio", str(SEGMENT_DURATION), help="The size of the images will be reduced in proportion to this number while maintaining the height/width ratio. This reduction is useful for improving latency and reducing token consumption (0 to not resize)"))
+    seconds_split = st.number_input('Number of seconds to split the video', initial_split, help="The video will be processed in smaller segments based on the number of seconds specified in this field. (0 to not split)")
+    seconds_per_frame = float(st.number_input('Number of seconds per frame', SECONDS_PER_FRAME, help="The frames will be extracted every number of seconds specified in the field. It can be a decimal number, like 0.5, to extract a frame every half of second."))
+    resize = st.number_input("Frames resizing ratio", 0, help="The size of the images will be reduced in proportion to this number while maintaining the height/width ratio. This reduction is useful for improving latency and reducing token consumption (0 to not resize)")
     save_frames = st.checkbox('Save the frames to the folder "frames"', False)
-    temperature = float(st.text_input('Temperature for the model', str(DEFAULT_TEMPERATURE)))
+    temperature = float(st.number_input('Temperature for the model', DEFAULT_TEMPERATURE))
     system_prompt = st.text_area('System Prompt', SYSTEM_PROMPT)
     user_prompt = st.text_area('User Prompt', USER_PROMPT)
 
@@ -262,14 +267,14 @@ else:
     url = st.text_area("Enter de url:", value='https://www.youtube.com/watch?v=Y6kHpAeIr4c', height=10)
     
     #continuous_transmision = st.checkbox('Continuous transmision', False, help="Video of a continuous transmision")
-    continuous_transmision = False
+    #continuous_transmision = False
 
 # Analyze the video when the button is pressed
 if st.button("Analize video", use_container_width=True, type='primary'):
 
     # Show parameters:
     print(f"PARAMETERS:")
-    print(f"file_or_url: {file_or_url}, audio_transcription: {audio_transcription}, seconds to split: {seconds}")
+    print(f"file_or_url: {file_or_url}, audio_transcription: {audio_transcription}, seconds to split: {seconds_split}")
     print(f"seconds_per_frame: {seconds_per_frame}, resize ratio: {resize}, save_frames: {save_frames}, temperature: {temperature}")
 
     if file_or_url == 'URL': # Process Youtube video
@@ -286,17 +291,17 @@ if st.button("Analize video", use_container_width=True, type='primary'):
             info_dict = ydl.extract_info(url, download=False)
             video_duration = info_dict.get('duration', 0)
 
-            if seconds == 0:
+            if seconds_split == 0:
                 duracion_segmento=video_duration
             else:
-                duracion_segmento=seconds #SEGMENT_DURATION
+                duracion_segmento=seconds_split #SEGMENT_DURATION
         else:
             video_duration = 48*60*60
         
-            if seconds == 0:
+            if seconds_split == 0:
                 duracion_segmento=180 # 3 minutes
             else:
-                duracion_segmento=seconds #SEGMENT_DURATION
+                duracion_segmento=seconds_split #SEGMENT_DURATION
         
         for start in range(0, video_duration, duracion_segmento):
             end = start + duracion_segmento
@@ -341,7 +346,7 @@ if st.button("Analize video", use_container_width=True, type='primary'):
                 f.write(video_file.getbuffer())
 
             # Splitting video in segment of N seconds (if seconds is 0 t will not split the video)
-            for segment_path in split_video(video_path, output_dir, seconds):
+            for segment_path in split_video(video_path, output_dir, seconds_split):
                 # Process the video segment
                 analysis = execute_video_processing(st, segment_path, system_prompt, user_prompt, temperature)
                 st.write(f"{analysis}")
