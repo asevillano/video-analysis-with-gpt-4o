@@ -9,7 +9,6 @@ from moviepy.video.io.ffmpeg_tools import ffmpeg_extract_subclip
 from moviepy.editor import VideoFileClip
 from openai import AzureOpenAI
 import base64
-from mimetypes import guess_type
 import yt_dlp
 from yt_dlp.utils import download_range_func
 
@@ -32,7 +31,7 @@ print(f'aoai_endpoint: {aoai_endpoint}, aoai_model_name: {aoai_model_name}')
 # Create AOAI client for answer generation
 aoai_client = AzureOpenAI(
     azure_deployment=aoai_model_name,
-    api_version='2024-02-15-preview',
+    api_version='2024-10-01-preview', #'2024-02-15-preview',
     azure_endpoint=aoai_endpoint,
     api_key=aoai_apikey
 )
