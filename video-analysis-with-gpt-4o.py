@@ -248,7 +248,7 @@ with st.sidebar:
     if audio_transcription:
         show_transcription = st.checkbox('Show audio transcription', True, help="Present the audio transcription or not")
     seconds_split = st.number_input('Number of seconds to split the video', initial_split, help="The video will be processed in smaller segments based on the number of seconds specified in this field. (0 to not split)")
-    seconds_per_frame = float(st.number_input('Number of seconds per frame', SECONDS_PER_FRAME, help="The frames will be extracted every number of seconds specified in the field. It can be a decimal number, like 0.5, to extract a frame every half of second."))
+    seconds_per_frame = float(st.text_input('Number of seconds per frame', SECONDS_PER_FRAME, help="The frames will be extracted every number of seconds specified in the field. It can be a decimal number, like 0.5, to extract a frame every half of second."))
     resize = st.number_input("Frames resizing ratio", 0, help="The size of the images will be reduced in proportion to this number while maintaining the height/width ratio. This reduction is useful for improving latency and reducing token consumption (0 to not resize)")
     save_frames = st.checkbox('Save the frames to the folder "frames"', False)
     temperature = float(st.number_input('Temperature for the model', DEFAULT_TEMPERATURE))
