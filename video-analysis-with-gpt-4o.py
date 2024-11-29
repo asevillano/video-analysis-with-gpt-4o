@@ -264,12 +264,9 @@ if file_or_url == 'File':
     video_file = st.file_uploader("Upload a video file", type=["mp4", "avi", "mov"])
 else:
     url = st.text_area("Enter de url:", value='https://www.youtube.com/watch?v=Y6kHpAeIr4c', height=10)
-    
-    #continuous_transmision = st.checkbox('Continuous transmision', False, help="Video of a continuous transmision")
-    #continuous_transmision = False
 
 # Analyze the video when the button is pressed
-if st.button("Analize video", use_container_width=True, type='primary'):
+if st.button("Analyze video", use_container_width=True, type='primary'):
 
     # Show parameters:
     print(f"PARAMETERS:")
