@@ -96,6 +96,7 @@ def process_video(video_path, seconds_per_frame=SECONDS_PER_FRAME, resize=RESIZE
 # Function to transcript the audio from the local video with Whisper
 def process_audio(video_path):
 
+    transcription_text = ''
     try:
         base_video_path, _ = os.path.splitext(video_path)
         audio_path = f"{base_video_path}.mp3"
@@ -110,12 +111,13 @@ def process_audio(video_path):
             model=whisper_model_name,
             file=open(audio_path, "rb"),
         )
-        print("Transcript: ", transcription.text + "\n\n")
+        transcription_text = transcription.text
+        print("Transcript: ", transcription_text + "\n\n")
     except Exception as ex:
         print(f'ERROR: {ex}')
-        transcription = ''
+        transcription_text = ''
 
-    return transcription
+    return transcription_text
 
 # Function to analyze the video with GPT-4o
 def analyze_video(base64frames, system_prompt, user_prompt, transcription, temperature):
@@ -194,7 +196,7 @@ def execute_video_processing(st, segment_path, system_prompt, user_prompt, tempe
                 output_dir = ''
             base64frames = process_video(segment_path, seconds_per_frame=seconds_per_frame, resize=resize, output_dir=output_dir, temperature=temperature)
             fin = time.time()
-            print(f'\\t>>>> Frames extraction took {(fin - inicio):.3f} seconds <<<<')
+            print(f'\t>>>> Frames extraction took {(fin - inicio):.3f} seconds <<<<')
             ### st.write(f'Extracted {len(base64frames)} frames in {(fin - inicio):.3f} seconds')
 
         # Extract the transcription of the audio
@@ -205,9 +207,9 @@ def execute_video_processing(st, segment_path, system_prompt, user_prompt, tempe
                 transcription = process_audio(segment_path)
                 fin = time.time()
             ### st.write(f'Transcription finished in {(fin - inicio):.3f} seconds')
-            print(f'Transcription: {transcription.text}')
+            print(f'Transcription: [{transcription}]')
             if show_transcription:
-                st.markdown(f"**Transcription**: {transcription.text}", unsafe_allow_html=True)
+                st.markdown(f"**Transcription**: {transcription}", unsafe_allow_html=True)
             print(f'\t>>>> Audio transcription took {(fin - inicio):.3f} seconds <<<<')
         else:
             msg = f'Analyzing frames with {aoai_model_name}...'
